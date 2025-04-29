@@ -3,7 +3,7 @@ import aiohttp
 import datetime
 
 # --- CONFIGURATION ---
-FORECAST_CHANNEL_ID = 1366548989071200347
+from config import FORECAST_CHANNEL_ID
 LATITUDE = 31.4638  # Replace with your target location latitude (example: San Angelo, TX)
 LONGITUDE = -100.4370  # Replace with your longitude
 FORECAST_DAYS = 7

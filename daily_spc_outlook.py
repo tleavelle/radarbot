@@ -3,7 +3,7 @@ import aiohttp
 import datetime
 
 # --- CONFIGURATION ---
-FORECAST_CHANNEL_ID = 1366548989071200347
+from config import FORECAST_CHANNEL_ID
 
 SPC_DAY1_IMAGE_URL = "https://www.spc.noaa.gov/products/outlook/day1otlk.png"
 SPC_DAY2_IMAGE_URL = "https://www.spc.noaa.gov/products/outlook/day2otlk.png"
