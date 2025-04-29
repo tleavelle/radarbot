@@ -12,7 +12,7 @@ from config import DISCORD_TOKEN #removed token from public view (and changed it
 # =================================
 
 intents = discord.Intents.default()
-intents.message_content = True  # Important for message editing
+intents.message_content = True  # ImportantS for message editing
 bot = discord.Client(intents=intents)
 
 scheduler = AsyncIOScheduler()
