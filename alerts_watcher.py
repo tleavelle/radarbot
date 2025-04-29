@@ -92,7 +92,7 @@ async def process_alerts(bot):
             timestamp=datetime.datetime.utcnow(),
             color=0xFF0000
         )
-        for title, summary in new_alerts[:5]:  # Limit to 5 alerts
+        for title, summary in new_alerts[:5]:
             emoji = get_alert_emoji(title)
             embed.add_field(name=f"{emoji} {title}", value=summary[:1024], inline=False)
 
@@ -101,6 +101,8 @@ async def process_alerts(bot):
         print(f"✅ Updated status message with {len(new_alerts)} new alert(s).")
     else:
         print(f"🕒 Checked alerts at {now}, no new alerts found.")
+        # 🛠️ Fix: Update last_alert_time even when no alerts found
+        last_alert_time = datetime.datetime.utcnow()
 
     # Always update the timestamp message
     try:
@@ -126,7 +128,7 @@ async def clear_status(bot):
     now_str = now.strftime("%Y-%m-%d %H:%M:%S")
     difference = (now - last_alert_time).total_seconds()
 
-    if difference > 3600:  # 1 hour of no new alerts
+    if difference > 3600:
         embed = discord.Embed(
             title="✅ No Active Warnings",
             description="There are currently no watches or warnings in effect.",
@@ -136,6 +138,8 @@ async def clear_status(bot):
         embed.set_footer(text="Radarbot - Enjoy the calm!")
         await status_msg.edit(content=None, embed=embed)
         print("🟢 Cleared alert status message to 'No Active Warnings'.")
+        # 🛠️ Fix: Reset timer to avoid re-clearing
+        last_alert_time = datetime.datetime.utcnow()
     else:
         print("🕒 No need to clear status yet (recent alert).")
 
