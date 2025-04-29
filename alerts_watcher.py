@@ -65,7 +65,7 @@ async def process_alerts(bot):
         if link in posted_alerts:
             continue
 
-        if any(county in title for county in WATCHED_COUNTIES):
+        if any(county.lower() in title.lower() for county in WATCHED_COUNTIES):
             last_alert_time = datetime.datetime.utcnow()
             posted_alerts.add(link)
 
@@ -88,14 +88,15 @@ async def process_alerts(bot):
 
     # Update or create the status message
     channel = bot.get_channel(ALERTS_CHANNEL_ID)
-    now = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-    status_text = f"📡 Last alert check: `{now} UTC`"
+    now = datetime.datetime.utcnow()
+    now_str = now.strftime("%Y-%m-%d %H:%M:%S")
+    status_text = f"📡 Last alert check: `{now_str} UTC`"
 
     if channel:
         try:
             if alert_status_message_id:
                 msg = await channel.fetch_message(alert_status_message_id)
-                await msg.edit(content=status_text)
+                await msg.edit(content=status_text, embed=None)
             else:
                 status_msg = await channel.send(status_text)
                 alert_status_message_id = status_msg.id
@@ -103,18 +104,22 @@ async def process_alerts(bot):
             print(f"⚠️ Could not edit or send status message: {e}")
 
     if not new_alert_posted:
-        print(f"🕒 Checked alerts at {now} UTC, no new alerts found.")
+        print(f"🕒 Checked alerts at {now_str} UTC, no new alerts found.")
 
 async def clear_status(bot):
-    """Post 'No active warnings' if it's been quiet for a while."""
-    global last_alert_time
+    """Update the status message if it's been quiet for a while."""
+    global last_alert_time, alert_status_message_id
 
     now = datetime.datetime.utcnow()
     difference = (now - last_alert_time).total_seconds()
 
-    if difference > 3600:  # 1 hour without any alert
-        channel = bot.get_channel(ALERTS_CHANNEL_ID)
-        if channel:
+    channel = bot.get_channel(ALERTS_CHANNEL_ID)
+    if not channel or not alert_status_message_id:
+        return  # Can't update if missing
+
+    try:
+        msg = await channel.fetch_message(alert_status_message_id)
+        if difference > 3600:  # More than 1 hour without alerts
             embed = discord.Embed(
                 title="✅ No Active Warnings",
                 description="There are currently no watches or warnings in effect.",
@@ -122,11 +127,19 @@ async def clear_status(bot):
                 color=0x00FF00
             )
             embed.set_footer(text="Radarbot - Enjoy the calm!")
-            await channel.send(embed=embed)
-        last_alert_time = datetime.datetime.utcnow()
+            await msg.edit(content=None, embed=embed)
+            print(f"🟢 Updated status to 'No Active Warnings'")
+        else:
+            now_str = now.strftime("%Y-%m-%d %H:%M:%S")
+            await msg.edit(content=f"📡 Last alert check: `{now_str} UTC`", embed=None)
+            print(f"🕒 Updated status timestamp only")
+    except Exception as e:
+        print(f"❌ Failed to edit status message: {e}")
 
 def get_alert_color(title):
+    """Decide color based on alert type."""
     for key, color in ALERT_COLORS.items():
         if key in title:
             return color
     return 0xFFFFFF
+
