@@ -3,7 +3,7 @@ import datetime
 import asyncio
 
 from config import RADAR_CHANNEL_ID
-from location_manager import get_lat_lon
+from location_manager import get_lat_lon, get_station_id
 from nexrad_locator import get_nearest_station
 
 try:
@@ -23,13 +23,21 @@ async def radar_task(bot, guild_id):
         print("⚠️ Radar channel not found.")
         return
 
-    lat, lon = get_lat_lon(guild_id)
-    nearest_station = get_nearest_station(lat, lon)
+    # Check if station ID is explicitly set
+    station_id = get_station_id(guild_id)
 
-    radar_url = f"https://radar.weather.gov/ridge/standard/{nearest_station}_loop.gif"
+    if station_id:
+        radar_code = station_id.upper()
+        print(f"📡 Using overridden station ID: {radar_code}")
+    else:
+        lat, lon = get_lat_lon(guild_id)
+        radar_code = get_nearest_station(lat, lon)
+        print(f"📡 Using nearest station: {radar_code} for lat/lon {lat}, {lon}")
+
+    radar_url = f"https://radar.weather.gov/ridge/standard/{radar_code}_loop.gif"
 
     embed = discord.Embed(
-        title=f"🌩️ Live Radar near {nearest_station}",
+        title=f"🌩️ Live Radar near {radar_code}",
         description=f"Updated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
         color=discord.Color.blue()
     )

@@ -3,7 +3,7 @@ import datetime
 from alerts_watcher import process_alerts
 from config import SYSTEM_MESSAGES_CHANNEL_ID, GUILD_ID
 from daily_forecast import post_forecast
-from location_manager import save_location, get_lat_lon, get_city_state
+from location_manager import save_location, get_lat_lon, get_city_state, get_station_id
 from nexrad_locator import get_nearest_station
 from server_config_manager import set_server_config, get_server_config
 
@@ -43,16 +43,25 @@ def setup_commands(bot):
         now = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
         await interaction.response.send_message(f"🏓 Pong! Radarbot is alive.\n🕒 Current UTC time: `{now}`", ephemeral=True)
 
-    @bot.tree.command(name="setlocation", description="Set the bot's location by coordinates or city/state.")
+    @bot.tree.command(name="setlocation", description="Set the bot's location using coordinates, city/state, or station ID.")
     @discord.app_commands.guilds(discord.Object(id=GUILD_ID))
     async def setlocation(interaction: discord.Interaction,
                           lat: float = None,
                           lon: float = None,
                           city: str = None,
-                          state: str = None):
+                          state: str = None,
+                          station_id: str = None):
         guild_id = interaction.guild.id
 
-        if (lat is not None and lon is not None):
+        if station_id:
+            save_location(guild_id, station_id=station_id.upper())
+            await interaction.response.send_message(
+                f"✅ Station override set to `{station_id.upper()}`.\n"
+                f"Radarbot will now use this station directly.",
+                ephemeral=True
+            )
+
+        elif lat is not None and lon is not None:
             save_location(guild_id, lat=lat, lon=lon)
             nearest_radar = get_nearest_station(lat, lon)
             await interaction.response.send_message(
@@ -60,7 +69,8 @@ def setup_commands(bot):
                 f"🛰️ Nearest Radar: `{nearest_radar}`",
                 ephemeral=True
             )
-        elif (city is not None and state is not None):
+
+        elif city and state:
             save_location(guild_id, city=city, state=state)
             lat, lon = get_lat_lon(guild_id)
             nearest_radar = get_nearest_station(lat, lon)
@@ -69,9 +79,13 @@ def setup_commands(bot):
                 f"🛰️ Nearest Radar: `{nearest_radar}`",
                 ephemeral=True
             )
+
         else:
             await interaction.response.send_message(
-                "⚠️ You must provide either `lat/lon` or `city/state` to set location.",
+                "⚠️ You must provide one of the following:\n"
+                "• `lat` + `lon`\n"
+                "• `city` + `state`\n"
+                "• `station_id` (e.g. `KJST`, `KDFW`)",
                 ephemeral=True
             )
 
@@ -81,23 +95,26 @@ def setup_commands(bot):
         guild_id = interaction.guild.id
         lat, lon = get_lat_lon(guild_id)
         city, state = get_city_state(guild_id)
-        nearest_radar = get_nearest_station(lat, lon)
+        station_id = get_station_id(guild_id)
+
+        station_text = f"🛰️ **Using Overridden Radar Station:** `{station_id}`" if station_id else \
+                       f"🛰️ Nearest Radar: `{get_nearest_station(lat, lon)}`"
 
         await interaction.response.send_message(
-            f"📍 Current Location:\n"
-            f"• City/State: {city}, {state}\n"
-            f"• Coordinates: {lat}, {lon}\n"
-            f"🛰️ Nearest Radar: `{nearest_radar}`",
+            f"📍 **Current Location Settings**\n"
+            f"• City/State: `{city}, {state}`\n"
+            f"• Coordinates: `{lat}, {lon}`\n"
+            f"{station_text}",
             ephemeral=True
         )
 
     @bot.tree.command(name="setchannels", description="Set the Radarbot channels for this server.")
     @discord.app_commands.guilds(discord.Object(id=GUILD_ID))
     async def setchannels(interaction: discord.Interaction,
-                        radar_channel: discord.TextChannel,
-                        forecast_channel: discord.TextChannel,
-                        alerts_channel: discord.TextChannel,
-                        system_channel: discord.TextChannel):
+                          radar_channel: discord.TextChannel,
+                          forecast_channel: discord.TextChannel,
+                          alerts_channel: discord.TextChannel,
+                          system_channel: discord.TextChannel):
         guild_id = interaction.guild.id
         set_server_config(
             guild_id,
@@ -133,17 +150,26 @@ def setup_commands(bot):
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @bot.tree.command(name="neareststation", description="Show the nearest NEXRAD radar station based on current location.")
+    @bot.tree.command(name="neareststation", description="Show the radar station currently in use.")
     @discord.app_commands.guilds(discord.Object(id=GUILD_ID))
     async def neareststation(interaction: discord.Interaction):
         guild_id = interaction.guild.id
-        lat, lon = get_lat_lon(guild_id)
-        nearest_radar = get_nearest_station(lat, lon)
+        station_id = get_station_id(guild_id)
 
-        await interaction.response.send_message(
-            f"🛰️ Nearest NEXRAD Radar Station: `{nearest_radar}`",
-            ephemeral=True
-        )
+        if station_id:
+            await interaction.response.send_message(
+                f"🛰️ **Radar Station Override is Active**\n"
+                f"Using manually set station: `{station_id}`",
+                ephemeral=True
+            )
+        else:
+            lat, lon = get_lat_lon(guild_id)
+            nearest = get_nearest_station(lat, lon)
+            await interaction.response.send_message(
+                f"🛰️ **Nearest NEXRAD Station (based on coordinates):** `{nearest}`",
+                ephemeral=True
+            )
+
     @bot.tree.command(name="help", description="Show a list of all Radarbot commands.")
     @discord.app_commands.guilds(discord.Object(id=GUILD_ID))
     async def help(interaction: discord.Interaction):
@@ -155,17 +181,17 @@ def setup_commands(bot):
 
         embed.add_field(
             name="/setlocation",
-            value="Set the bot's location using coordinates or city/state.",
+            value="Set the bot's location using coordinates, city/state, or station ID.",
             inline=False
         )
         embed.add_field(
             name="/location",
-            value="View the currently saved location and nearest radar.",
+            value="View the currently saved location and radar source.",
             inline=False
         )
         embed.add_field(
             name="/neareststation",
-            value="Show the closest NEXRAD radar station to your location.",
+            value="Show the radar station currently in use.",
             inline=False
         )
         embed.add_field(
