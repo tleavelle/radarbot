@@ -11,19 +11,21 @@ def setup_commands(bot):
     @bot.tree.command(name="heartbeat", description="Manually send a Radarbot heartbeat.")
     @discord.app_commands.guilds(discord.Object(id=GUILD_ID))
     async def heartbeat(interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
         now = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
         channel = bot.get_channel(SYSTEM_MESSAGES_CHANNEL_ID)
         if channel:
             await channel.send(f"✅ **Radarbot Heartbeat:** Manual heartbeat as of {now} UTC.")
-            await interaction.response.send_message(f"💓 Heartbeat sent at {now} UTC!", ephemeral=True)
+            await interaction.followup.send(f"💓 Heartbeat sent at {now} UTC!", ephemeral=True)
         else:
-            await interaction.response.send_message("⚠️ Could not find system messages channel.", ephemeral=True)
+            await interaction.followup.send("⚠️ Could not find system messages channel.", ephemeral=True)
 
     @bot.tree.command(name="checkalerts", description="Manually check for severe weather alerts.")
     @discord.app_commands.guilds(discord.Object(id=GUILD_ID))
     async def check_alerts(interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
         await process_alerts(bot)
-        await interaction.response.send_message("📡 Manual alert check completed.", ephemeral=True)
+        await interaction.followup.send("📡 Manual alert check completed.", ephemeral=True)
 
     @bot.tree.command(name="status", description="Get Radarbot system status.")
     @discord.app_commands.guilds(discord.Object(id=GUILD_ID))
@@ -34,8 +36,9 @@ def setup_commands(bot):
     @bot.tree.command(name="forecast", description="Manually post or update the 7-day forecast.")
     @discord.app_commands.guilds(discord.Object(id=GUILD_ID))
     async def forecast(interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
         await post_forecast(bot, interaction.guild.id)
-        await interaction.response.send_message("🌤️ Forecast posted/updated successfully.", ephemeral=True)
+        await interaction.followup.send("🌤️ Forecast posted/updated successfully.", ephemeral=True)
 
     @bot.tree.command(name="ping", description="Check if Radarbot is alive and get current UTC time.")
     @discord.app_commands.guilds(discord.Object(id=GUILD_ID))
@@ -179,57 +182,16 @@ def setup_commands(bot):
             color=discord.Color.green()
         )
 
-        embed.add_field(
-            name="/setlocation",
-            value="Set the bot's location using coordinates, city/state, or station ID.",
-            inline=False
-        )
-        embed.add_field(
-            name="/location",
-            value="View the currently saved location and radar source.",
-            inline=False
-        )
-        embed.add_field(
-            name="/neareststation",
-            value="Show the radar station currently in use.",
-            inline=False
-        )
-        embed.add_field(
-            name="/forecast",
-            value="Post or update the full 7-day forecast for this server.",
-            inline=False
-        )
-        embed.add_field(
-            name="/checkalerts",
-            value="Manually check for severe weather alerts now.",
-            inline=False
-        )
-        embed.add_field(
-            name="/setchannels",
-            value="Set where Radarbot posts radar, forecasts, and alerts.",
-            inline=False
-        )
-        embed.add_field(
-            name="/setrole",
-            value="Set the role to ping for severe weather alerts.",
-            inline=False
-        )
-        embed.add_field(
-            name="/viewconfig",
-            value="See your server's full Radarbot configuration.",
-            inline=False
-        )
-        embed.add_field(
-            name="/heartbeat",
-            value="Manually trigger a bot heartbeat message.",
-            inline=False
-        )
-        embed.add_field(
-            name="/ping",
-            value="Check if Radarbot is online and show the current UTC time.",
-            inline=False
-        )
+        embed.add_field(name="/setlocation", value="Set Radarbot's location by coordinates, city/state, or station ID.", inline=False)
+        embed.add_field(name="/location", value="View the currently saved location and radar source.", inline=False)
+        embed.add_field(name="/neareststation", value="Show the radar station currently in use.", inline=False)
+        embed.add_field(name="/forecast", value="Post or update the 7-day forecast for this server.", inline=False)
+        embed.add_field(name="/checkalerts", value="Manually check for severe weather alerts now.", inline=False)
+        embed.add_field(name="/setchannels", value="Set where Radarbot posts radar, forecasts, and alerts.", inline=False)
+        embed.add_field(name="/setrole", value="Set the role to ping for severe weather alerts.", inline=False)
+        embed.add_field(name="/viewconfig", value="See your server's full Radarbot configuration.", inline=False)
+        embed.add_field(name="/heartbeat", value="Manually trigger a bot heartbeat message.", inline=False)
+        embed.add_field(name="/ping", value="Check if Radarbot is online and show the current UTC time.", inline=False)
 
         embed.set_footer(text="Radarbot by W5QX • Stay weather-aware! 🌩️")
-
         await interaction.response.send_message(embed=embed, ephemeral=True)
