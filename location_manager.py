@@ -9,7 +9,7 @@ default_location = {
     "lon": -100.4370,
     "city": "San Angelo",
     "state": "TX",
-    "station_id": "KJST"
+    "station_id": "KSJT"
 }
 
 def load_all_locations():
