@@ -22,7 +22,6 @@ intents.message_content = True  # Required to edit messages
 
 # --- CREATE BOT ---
 bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
-#bot.tree = discord.app_commands.CommandTree(bot)
 scheduler = AsyncIOScheduler()
 
 # --- FUNCTIONS ---
@@ -40,11 +39,9 @@ async def send_heartbeat(bot):
 @bot.event
 async def on_guild_join(guild):
     """When the bot joins a new server, create default config and send a welcome message."""
-
     ensure_server_config(guild.id)
     print(f"✅ Created default config for new server: {guild.name} ({guild.id})")
 
-    # Try to send a welcome message to the system channel if available
     if guild.system_channel:
         try:
             await guild.system_channel.send(
@@ -93,12 +90,13 @@ async def on_ready():
     scheduler.add_job(send_heartbeat, 'interval', hours=24, args=[bot])
 
     # Start radar updater auto-loop
-    bot.loop.create_task(radar_updater(bot))
+    bot.loop.create_task(radar_updater(bot, GUILD_ID))
 
     # Start the scheduler
     scheduler.start()
 
-    await radar_task(bot)
+    # Post radar once immediately on startup
+    await radar_task(bot, GUILD_ID)
 
     print("🗓️ Scheduler and radar updater started.")
 

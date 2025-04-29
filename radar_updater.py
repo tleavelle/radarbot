@@ -2,7 +2,6 @@ import discord
 import datetime
 import asyncio
 
-# ======== CONFIGURATION ========
 from config import RADAR_CHANNEL_ID
 from location_manager import get_lat_lon
 from nexrad_locator import get_nearest_station
@@ -13,12 +12,10 @@ except ImportError:
     RADAR_MESSAGE_ID = None
 
 UPDATE_INTERVAL = 300  # 5 minutes
-# =================================
 
 radar_message = None  # Will store the radar message object
 
-async def radar_task(bot):
-    """Posts and updates the live radar in the radar channel."""
+async def radar_task(bot, guild_id):
     global radar_message
 
     channel = bot.get_channel(RADAR_CHANNEL_ID)
@@ -26,11 +23,8 @@ async def radar_task(bot):
         print("⚠️ Radar channel not found.")
         return
 
-    lat, lon = get_lat_lon()
+    lat, lon = get_lat_lon(guild_id)
     nearest_station = get_nearest_station(lat, lon)
-    if not nearest_station:
-        print("❌ Could not find nearest radar station.")
-        return
 
     radar_url = f"https://radar.weather.gov/ridge/standard/{nearest_station}_loop.gif"
 
@@ -39,7 +33,7 @@ async def radar_task(bot):
         description=f"Updated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
         color=discord.Color.blue()
     )
-    embed.set_image(url=f"{radar_url}?{datetime.datetime.now().timestamp()}")  # Cache-busting
+    embed.set_image(url=f"{radar_url}?{datetime.datetime.now().timestamp()}")
 
     if radar_message is None:
         if RADAR_MESSAGE_ID is not None:
@@ -53,11 +47,9 @@ async def radar_task(bot):
                 print(f"📌 New radar message posted. ID: {radar_message.id}")
                 print("👉 Please add this ID to your config.py as RADAR_MESSAGE_ID.")
         else:
-            # First ever run: no ID available
-            print("⚠️ No RADAR_MESSAGE_ID set. Posting radar for the first time...")
             radar_message = await channel.send(embed=embed)
             print(f"📌 First-time radar message posted. ID: {radar_message.id}")
-            print("👉 Please copy this ID and add it to your config.py as RADAR_MESSAGE_ID.")
+            print("👉 Please copy this ID and add it to config.py as RADAR_MESSAGE_ID.")
     else:
         try:
             await radar_message.edit(embed=embed)
@@ -65,13 +57,13 @@ async def radar_task(bot):
         except Exception as e:
             print(f"❌ Failed to update radar message: {e}")
 
-async def radar_updater(bot):
+async def radar_updater(bot, guild_id):
     """Looping task to refresh radar every UPDATE_INTERVAL seconds."""
     await bot.wait_until_ready()
     print("🔄 radar_updater loop started.")
     while not bot.is_closed():
         try:
-            await radar_task(bot)
+            await radar_task(bot, guild_id)
         except Exception as e:
             print(f"❌ Unhandled error in radar updater loop: {e}")
         await asyncio.sleep(UPDATE_INTERVAL)
