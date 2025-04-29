@@ -39,15 +39,15 @@ async def send_heartbeat(bot):
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
 
+    # Setup slash command handlers BEFORE syncing
+    setup_commands(bot)
+
     # Register slash commands ONLY for your guild
     try:
         await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
         print(f"🛡️ Slash commands synced to guild ID: {GUILD_ID}")
     except Exception as e:
         print(f"⚠️ Failed to sync slash commands: {e}")
-
-    # Setup slash command handlers
-    setup_commands(bot)
 
     # Schedule the daily 7-day forecast at 7:00 AM
     scheduler.add_job(post_forecast, 'cron', hour=7, minute=0, args=[bot])

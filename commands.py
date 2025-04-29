@@ -5,27 +5,31 @@ from config import SYSTEM_MESSAGES_CHANNEL_ID, GUILD_ID
 from daily_forecast import post_forecast
 
 def setup_commands(bot):
-    @bot.slash_command(name="heartbeat", description="Manually send a Radarbot heartbeat.", guild_ids=[GUILD_ID])
-    async def heartbeat(ctx):
+    @bot.tree.command(name="heartbeat", description="Manually send a Radarbot heartbeat.")
+    @discord.app_commands.guilds(discord.Object(id=GUILD_ID))
+    async def heartbeat(interaction: discord.Interaction):
         now = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
         channel = bot.get_channel(SYSTEM_MESSAGES_CHANNEL_ID)
         if channel:
             await channel.send(f"✅ **Radarbot Heartbeat:** Manual heartbeat as of {now} UTC.")
-            await ctx.respond(f"💓 Heartbeat sent at {now} UTC!", ephemeral=True)
+            await interaction.response.send_message(f"💓 Heartbeat sent at {now} UTC!", ephemeral=True)
         else:
-            await ctx.respond("⚠️ Could not find system messages channel.", ephemeral=True)
+            await interaction.response.send_message("⚠️ Could not find system messages channel.", ephemeral=True)
 
-    @bot.slash_command(name="checkalerts", description="Manually check for severe weather alerts.", guild_ids=[GUILD_ID])
-    async def check_alerts(ctx):
+    @bot.tree.command(name="checkalerts", description="Manually check for severe weather alerts.")
+    @discord.app_commands.guilds(discord.Object(id=GUILD_ID))
+    async def check_alerts(interaction: discord.Interaction):
         await process_alerts(bot)
-        await ctx.respond("📡 Manual alert check completed.", ephemeral=True)
+        await interaction.response.send_message("📡 Manual alert check completed.", ephemeral=True)
 
-    @bot.slash_command(name="status", description="Get Radarbot system status.", guild_ids=[GUILD_ID])
-    async def status(ctx):
+    @bot.tree.command(name="status", description="Get Radarbot system status.")
+    @discord.app_commands.guilds(discord.Object(id=GUILD_ID))
+    async def status(interaction: discord.Interaction):
         now = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-        await ctx.respond(f"✅ Radarbot is online. Current UTC time: `{now}`", ephemeral=True)
+        await interaction.response.send_message(f"✅ Radarbot is online. Current UTC time: `{now}`", ephemeral=True)
 
-    @bot.slash_command(name="forecast", description="Manually post or update the 7-day forecast.", guild_ids=[GUILD_ID])
-    async def forecast(ctx):
+    @bot.tree.command(name="forecast", description="Manually post or update the 7-day forecast.")
+    @discord.app_commands.guilds(discord.Object(id=GUILD_ID))
+    async def forecast(interaction: discord.Interaction):
         await post_forecast(bot)
-        await ctx.respond("🌤️ Forecast posted/updated successfully.", ephemeral=True)
+        await interaction.response.send_message("🌤️ Forecast posted/updated successfully.", ephemeral=True)
