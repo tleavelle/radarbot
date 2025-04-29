@@ -1,6 +1,7 @@
 import discord
 import aiohttp
 import datetime
+import re
 
 # --- CONFIGURATION ---
 from config import FORECAST_CHANNEL_ID
@@ -17,13 +18,12 @@ async def fetch_outlook_summary(url, label=""):
         async with session.get(url) as resp:
             text = await resp.text()
 
-    lines = text.splitlines()
-    for line in lines:
-        line = line.strip()
-        if line.startswith("...") and line.endswith("...") and len(line) > 10:
-            clean = line.strip(".").replace("*", "").strip()
-            print(f"✅ Extracted {label} summary: {clean}")
-            return clean
+    # Look for lines like "... MARGINAL RISK OF SEVERE THUNDERSTORMS EXISTS OVER PARTS OF ..."
+    matches = re.findall(r"\.\.\. (.+?) \.\.\.", text)
+    if matches:
+        summary = matches[0].strip()
+        print(f"✅ Extracted {label} summary: {summary}")
+        return summary
 
     print(f"⚠️ Failed to extract SPC summary for {label}")
     return f"⚠️ No summary found for {label}."
