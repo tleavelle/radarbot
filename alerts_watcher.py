@@ -24,6 +24,18 @@ ALERT_COLORS = {
     "Flood Warning": 0x00CED1,
 }
 
+def get_alert_emoji(title):
+    """Return an appropriate emoji based on alert type."""
+    title = title.lower()  # make case insensitive
+    if "tornado" in title:
+        return "🌪"
+    elif "severe thunderstorm" in title:
+        return "🌩"
+    elif "flood" in title:
+        return "🌊"
+    else:
+        return "⚠️"
+
 # Track alerts we've already posted
 posted_alerts = set()
 last_alert_time = datetime.datetime.utcnow()
@@ -38,6 +50,8 @@ async def fetch_alerts():
 async def process_alerts(bot):
     global last_alert_time
 
+    new_alert_posted = False  # Track if we post anything
+
     entries = await fetch_alerts()
     for entry in entries:
         title = entry.title
@@ -45,29 +59,33 @@ async def process_alerts(bot):
         updated = entry.updated
         link = entry.link
 
-        # Skip already posted alerts
         if link in posted_alerts:
             continue
 
-        # Match only if the alert is in our counties
         if any(county in title for county in WATCHED_COUNTIES):
             last_alert_time = datetime.datetime.utcnow()
             posted_alerts.add(link)
 
-            embed = discord.Embed(
-                title=f"⚠️ {title}",
-                description=summary,
-                url=link,
-                timestamp=datetime.datetime.utcnow(),
-                color=get_alert_color(title)
-            )
-            embed.set_footer(text="Radarbot - Stay safe out there!")
+            emoji = get_alert_emoji(title)
+            header = f"{emoji}  | NWS | `{title}`"
 
             channel = bot.get_channel(ALERTS_CHANNEL_ID)
-            role = f"<@&{SEVERE_ROLE_ID}>"
+            role_mention = f"<@&{SEVERE_ROLE_ID}>"
 
             if channel:
-                await channel.send(role, embed=embed)
+                final_message = f"""{header}
+
+{role_mention}
+{summary}"""
+
+                await channel.send(final_message)
+                print(f"✅ Posted alert: {title}")
+
+            new_alert_posted = True  # Mark that we posted something
+
+    if not new_alert_posted:
+        now = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        print(f"🕒 Checked alerts at {now} UTC, no new alerts found.")
 
 async def clear_status(bot):
     """Post 'No active warnings' if it's been quiet for a while."""
