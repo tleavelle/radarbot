@@ -8,19 +8,19 @@ from alerts_watcher import process_alerts, clear_status
 from daily_forecast import post_forecast
 from daily_spc_outlook import post_spc_outlook
 from radar_updater import radar_updater
-from commands import setup_commands  # <<< NEW!
+from commands import setup_commands  # Slash command setup
 
 # ======== CONFIGURATION ========
 from config import DISCORD_TOKEN
-from config import SYSTEM_MESSAGES_CHANNEL_ID
+from config import SYSTEM_MESSAGES_CHANNEL_ID, GUILD_ID
 # =================================
 
 # --- INTENTS ---
 intents = discord.Intents.default()
-intents.message_content = True  # Important for message editing
+intents.message_content = True  # Required to edit messages
 
 # --- CREATE BOT ---
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 scheduler = AsyncIOScheduler()
 
 # --- FUNCTIONS ---
@@ -39,7 +39,14 @@ async def send_heartbeat(bot):
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
 
-    # Setup slash commands
+    # Register slash commands ONLY for your guild
+    try:
+        await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
+        print(f"🛡️ Slash commands synced to guild ID: {GUILD_ID}")
+    except Exception as e:
+        print(f"⚠️ Failed to sync slash commands: {e}")
+
+    # Setup slash command handlers
     setup_commands(bot)
 
     # Schedule the daily 7-day forecast at 7:00 AM
