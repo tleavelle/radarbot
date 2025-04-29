@@ -3,7 +3,7 @@ import datetime
 import asyncio
 
 # ======== CONFIGURATION ========
-RADAR_CHANNEL_ID = 1366550233194168411  # Target channel ID
+from config import RADAR_CHANNEL_ID  # Target channel ID
 RADAR_URL = 'https://radar.weather.gov/ridge/standard/KSJT_loop.gif'  # Radar image URL
 UPDATE_INTERVAL = 300  # Update every 5 minutes (300 seconds)
 # =================================
