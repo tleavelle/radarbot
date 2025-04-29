@@ -19,7 +19,7 @@ def setup_commands(bot):
     @bot.tree.command(name="checkalerts", description="Manually check for severe weather alerts.")
     @discord.app_commands.guilds(discord.Object(id=GUILD_ID))
     async def check_alerts(interaction: discord.Interaction):
-        await process_alerts(bot)
+        await process_alerts(bot)  # Pass the bot correctly
         await interaction.response.send_message("📡 Manual alert check completed.", ephemeral=True)
 
     @bot.tree.command(name="status", description="Get Radarbot system status.")
