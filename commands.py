@@ -33,3 +33,9 @@ def setup_commands(bot):
     async def forecast(interaction: discord.Interaction):
         await post_forecast(bot)
         await interaction.response.send_message("🌤️ Forecast posted/updated successfully.", ephemeral=True)
+
+    @bot.tree.command(name="ping", description="Check if Radarbot is alive and get current UTC time.")
+    @discord.app_commands.guilds(discord.Object(id=GUILD_ID))
+    async def ping(interaction: discord.Interaction):
+        now = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        await interaction.response.send_message(f"🏓 Pong! Radarbot is alive.\n🕒 Current UTC time: `{now}`", ephemeral=True)
