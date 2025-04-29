@@ -78,7 +78,7 @@ async def on_ready():
         print(f"⚠️ Failed to sync slash commands: {e}")
 
     # Schedule the daily 7-day forecast at 7:00 AM
-    scheduler.add_job(post_forecast, 'cron', hour=7, minute=0, args=[bot])
+    scheduler.add_job(post_forecast, 'cron', hour=7, minute=0, args=[bot, GUILD_ID])
 
     # Schedule the daily SPC outlook at 7:05 AM
     scheduler.add_job(post_spc_outlook, 'cron', hour=7, minute=5, args=[bot])
