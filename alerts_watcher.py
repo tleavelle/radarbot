@@ -5,8 +5,8 @@ import feedparser
 import datetime
 
 # --- CONFIGURATION ---
-ALERTS_CHANNEL_ID = 1366527996923740210
-SEVERE_ROLE_ID = 1366591772884734004  # <-- Replace this with the actual SeverWxWatch Role ID number
+from config import ALERTS_CHANNEL_ID
+from config import SEVERE_ROLE_ID
 WATCHED_COUNTIES = [
     "Haskell", "Throckmorton", "Fisher", "Jones", "Shackleford", "Nolan", "Taylor", "Callahan",
     "Sterling", "Coke", "Runnels", "Coleman", "Brown", "Irion", "Tom Green", "Concho",
