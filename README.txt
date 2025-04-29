@@ -70,3 +70,6 @@ Make sure not to hardcode tokens directly in any .py files.
 📄 License
 This project is licensed under the MIT License.
 Feel free to fork, modify, and build on it!
+---
+📄 [Privacy Policy](./PRIVACY_POLICY.md)  
+📜 [Terms of Service](./TERMS_OF_SERVICE.md)
