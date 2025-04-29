@@ -58,7 +58,8 @@ async def fetch_forecast():
     url = (
         f"https://api.open-meteo.com/v1/forecast?"
         f"latitude={LATITUDE}&longitude={LONGITUDE}&"
-        f"daily=weathercode,temperature_2m_max,temperature_2m_min&"
+        f"daily=weathercode,temperature_2m_max,temperature_2m_min,"
+        f"precipitation_probability_max,dewpoint_2m_min,windgusts_10m_max&"
         f"timezone=America/Chicago"
     )
 
@@ -91,6 +92,9 @@ async def post_forecast(bot):
     highs_c = forecast_data["daily"]["temperature_2m_max"]
     lows_c = forecast_data["daily"]["temperature_2m_min"]
     codes = forecast_data["daily"]["weathercode"]
+    pops = forecast_data["daily"]["precipitation_probability_max"]
+    dews_c = forecast_data["daily"]["dewpoint_2m_min"]
+    gusts = forecast_data["daily"].get("windgusts_10m_max", [None] * FORECAST_DAYS)
 
     current = current_data["current_weather"]
     temp_f = c_to_f(current["temperature"])
@@ -118,7 +122,14 @@ async def post_forecast(bot):
         emoji = WEATHER_EMOJIS.get(condition, "❓")
         high_f = c_to_f(highs_c[i])
         low_f = c_to_f(lows_c[i])
-        lines.append(f"\n**{date}:** {emoji} High: {high_f}°F | Low: {low_f}°F")
+        dew_f = c_to_f(dews_c[i])
+        pop = pops[i]
+        gust_mph = f"{round(gusts[i])} mph" if gusts[i] is not None else "N/A"
+
+        lines.append(f"\n**{date}:** {emoji}")
+        lines.append(f"• High: {high_f}°F | Low: {low_f}°F")
+        lines.append(f"• Dewpoint: {dew_f}°F | Precip: {pop}%")
+        lines.append(f"• Gusts: {gust_mph}")
 
     forecast_text = "\n".join(lines)
 
@@ -137,3 +148,4 @@ async def post_forecast(bot):
         print("✅ Forecast message posted successfully (new message).")
     except Exception as e:
         print(f"❌ Failed to update forecast message: {e}")
+
