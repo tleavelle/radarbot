@@ -5,8 +5,8 @@ import feedparser
 import datetime
 
 # --- CONFIGURATION ---
-from config import ALERTS_CHANNEL_ID
-from config import SEVERE_ROLE_ID
+from config import ALERTS_CHANNEL_ID, SEVERE_ROLE_ID, ALERT_STATUS_MESSAGE_ID, ALERT_TIMESTAMP_MESSAGE_ID
+
 WATCHED_COUNTIES = [
     "Haskell", "Throckmorton", "Fisher", "Jones", "Shackleford", "Nolan", "Taylor", "Callahan",
     "Sterling", "Coke", "Runnels", "Coleman", "Brown", "Irion", "Tom Green", "Concho",
@@ -25,7 +25,6 @@ ALERT_COLORS = {
 }
 
 def get_alert_emoji(title):
-    """Return an appropriate emoji based on alert type."""
     title = title.lower()
     if "tornado" in title:
         return "🌪"
@@ -36,12 +35,15 @@ def get_alert_emoji(title):
     else:
         return "⚠️"
 
-# Track alerts we've already posted
+def get_alert_color(title):
+    for key, color in ALERT_COLORS.items():
+        if key in title:
+            return color
+    return 0xFFFFFF
+
+# Track posted alerts
 posted_alerts = set()
 last_alert_time = datetime.datetime.utcnow()
-
-# Track the status message so we can update it
-alert_status_message_id = None  # Will store message ID after first post
 
 async def fetch_alerts():
     async with aiohttp.ClientSession() as session:
@@ -51,95 +53,94 @@ async def fetch_alerts():
             return feed.entries
 
 async def process_alerts(bot):
-    global last_alert_time, alert_status_message_id
+    global last_alert_time
 
-    new_alert_posted = False
+    channel = bot.get_channel(ALERTS_CHANNEL_ID)
+    if not channel:
+        print("⚠️ Alert channel not found.")
+        return
+
+    try:
+        status_msg = await channel.fetch_message(ALERT_STATUS_MESSAGE_ID)
+        timestamp_msg = await channel.fetch_message(ALERT_TIMESTAMP_MESSAGE_ID)
+    except Exception as e:
+        print(f"❌ Failed to fetch status or timestamp messages: {e}")
+        return
 
     entries = await fetch_alerts()
+    new_alerts = []
+
     for entry in entries:
         title = entry.title
         summary = entry.summary
-        updated = entry.updated
         link = entry.link
 
         if link in posted_alerts:
             continue
 
         if any(county.lower() in title.lower() for county in WATCHED_COUNTIES):
-            last_alert_time = datetime.datetime.utcnow()
             posted_alerts.add(link)
+            new_alerts.append((title, summary))
+            last_alert_time = datetime.datetime.utcnow()
 
+    now = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+    if new_alerts:
+        embed = discord.Embed(
+            title="🔴 Active Severe Weather Alerts",
+            description=f"{len(new_alerts)} active alert(s) for monitored counties.",
+            timestamp=datetime.datetime.utcnow(),
+            color=0xFF0000
+        )
+        for title, summary in new_alerts[:5]:  # Limit to 5 alerts
             emoji = get_alert_emoji(title)
-            header = f"{emoji}  | NWS | `{title}`"
+            embed.add_field(name=f"{emoji} {title}", value=summary[:1024], inline=False)
 
-            channel = bot.get_channel(ALERTS_CHANNEL_ID)
-            role_mention = f"<@&{SEVERE_ROLE_ID}>"
+        embed.set_footer(text="Radarbot - Stay safe!")
+        await status_msg.edit(content=None, embed=embed)
+        print(f"✅ Updated status message with {len(new_alerts)} new alert(s).")
+    else:
+        print(f"🕒 Checked alerts at {now}, no new alerts found.")
 
-            if channel:
-                final_message = f"""{header}
-
-{role_mention}
-{summary}"""
-
-                await channel.send(final_message)
-                print(f"✅ Posted alert: {title}")
-
-            new_alert_posted = True
-
-    # Update or create the status message
-    channel = bot.get_channel(ALERTS_CHANNEL_ID)
-    now = datetime.datetime.utcnow()
-    now_str = now.strftime("%Y-%m-%d %H:%M:%S")
-    status_text = f"📡 Last alert check: `{now_str} UTC`"
-
-    if channel:
-        try:
-            if alert_status_message_id:
-                msg = await channel.fetch_message(alert_status_message_id)
-                await msg.edit(content=status_text, embed=None)
-            else:
-                status_msg = await channel.send(status_text)
-                alert_status_message_id = status_msg.id
-        except Exception as e:
-            print(f"⚠️ Could not edit or send status message: {e}")
-
-    if not new_alert_posted:
-        print(f"🕒 Checked alerts at {now_str} UTC, no new alerts found.")
+    # Always update the timestamp message
+    try:
+        await timestamp_msg.edit(content=f"📡 Last alert check: `{now} UTC`")
+    except Exception as e:
+        print(f"⚠️ Failed to update timestamp message: {e}")
 
 async def clear_status(bot):
-    """Update the status message if it's been quiet for a while."""
-    global last_alert_time, alert_status_message_id
-
-    now = datetime.datetime.utcnow()
-    difference = (now - last_alert_time).total_seconds()
+    global last_alert_time
 
     channel = bot.get_channel(ALERTS_CHANNEL_ID)
-    if not channel or not alert_status_message_id:
-        return  # Can't update if missing
+    if not channel:
+        return
 
     try:
-        msg = await channel.fetch_message(alert_status_message_id)
-        if difference > 3600:  # More than 1 hour without alerts
-            embed = discord.Embed(
-                title="✅ No Active Warnings",
-                description="There are currently no watches or warnings in effect.",
-                timestamp=datetime.datetime.utcnow(),
-                color=0x00FF00
-            )
-            embed.set_footer(text="Radarbot - Enjoy the calm!")
-            await msg.edit(content=None, embed=embed)
-            print(f"🟢 Updated status to 'No Active Warnings'")
-        else:
-            now_str = now.strftime("%Y-%m-%d %H:%M:%S")
-            await msg.edit(content=f"📡 Last alert check: `{now_str} UTC`", embed=None)
-            print(f"🕒 Updated status timestamp only")
+        status_msg = await channel.fetch_message(ALERT_STATUS_MESSAGE_ID)
+        timestamp_msg = await channel.fetch_message(ALERT_TIMESTAMP_MESSAGE_ID)
     except Exception as e:
-        print(f"❌ Failed to edit status message: {e}")
+        print(f"❌ Failed to fetch status or timestamp messages: {e}")
+        return
 
-def get_alert_color(title):
-    """Decide color based on alert type."""
-    for key, color in ALERT_COLORS.items():
-        if key in title:
-            return color
-    return 0xFFFFFF
+    now = datetime.datetime.utcnow()
+    now_str = now.strftime("%Y-%m-%d %H:%M:%S")
+    difference = (now - last_alert_time).total_seconds()
 
+    if difference > 3600:  # 1 hour of no new alerts
+        embed = discord.Embed(
+            title="✅ No Active Warnings",
+            description="There are currently no watches or warnings in effect.",
+            timestamp=datetime.datetime.utcnow(),
+            color=0x00FF00
+        )
+        embed.set_footer(text="Radarbot - Enjoy the calm!")
+        await status_msg.edit(content=None, embed=embed)
+        print("🟢 Cleared alert status message to 'No Active Warnings'.")
+    else:
+        print("🕒 No need to clear status yet (recent alert).")
+
+    # Always update timestamp regardless
+    try:
+        await timestamp_msg.edit(content=f"📡 Last alert check: `{now_str} UTC`")
+    except Exception as e:
+        print(f"⚠️ Failed to update timestamp message during clear_status: {e}")
