@@ -4,12 +4,11 @@ import asyncio
 import datetime
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from radar_updater import radar_updater, radar_task
-
+from server_config_manager import ensure_server_config
 
 from alerts_watcher import process_alerts, clear_status
 from daily_forecast import post_forecast
 from daily_spc_outlook import post_spc_outlook
-from radar_updater import radar_updater
 from commands import setup_commands  # Slash command setup
 
 # ======== CONFIGURATION ========
@@ -38,6 +37,32 @@ async def send_heartbeat(bot):
         print("⚠️ Could not find the system messages channel to send heartbeat.")
 
 # --- EVENTS ---
+@bot.event
+async def on_guild_join(guild):
+    """When the bot joins a new server, create default config and send a welcome message."""
+
+    ensure_server_config(guild.id)
+    print(f"✅ Created default config for new server: {guild.name} ({guild.id})")
+
+    # Try to send a welcome message to the system channel if available
+    if guild.system_channel:
+        try:
+            await guild.system_channel.send(
+                "**👋 Thanks for adding Radarbot!**\n\n"
+                "I'm now watching your skies!\n\n"
+                "To get started, use these commands:\n"
+                "• `/setlocation` — set your server's location\n"
+                "• `/setchannels` — set where Radarbot should post radar/forecast/alerts\n"
+                "• `/setrole` — set a role to ping during severe weather\n\n"
+                "Use `/viewconfig` anytime to check your settings.\n"
+                "🌩️ Stay safe!"
+            )
+            print(f"✅ Welcome message sent to {guild.name}.")
+        except Exception as e:
+            print(f"⚠️ Failed to send welcome message in {guild.name}: {e}")
+    else:
+        print(f"⚠️ No system channel found for {guild.name}. Welcome message skipped.")
+
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")

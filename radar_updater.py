@@ -4,13 +4,14 @@ import asyncio
 
 # ======== CONFIGURATION ========
 from config import RADAR_CHANNEL_ID
+from location_manager import get_lat_lon
+from nexrad_locator import get_nearest_station
 
 try:
     from config import RADAR_MESSAGE_ID
 except ImportError:
-    RADAR_MESSAGE_ID = None  # Allow first-time setup without it
+    RADAR_MESSAGE_ID = None
 
-RADAR_URL = 'https://radar.weather.gov/ridge/standard/KSJT_loop.gif'
 UPDATE_INTERVAL = 300  # 5 minutes
 # =================================
 
@@ -25,12 +26,20 @@ async def radar_task(bot):
         print("⚠️ Radar channel not found.")
         return
 
+    lat, lon = get_lat_lon()
+    nearest_station = get_nearest_station(lat, lon)
+    if not nearest_station:
+        print("❌ Could not find nearest radar station.")
+        return
+
+    radar_url = f"https://radar.weather.gov/ridge/standard/{nearest_station}_loop.gif"
+
     embed = discord.Embed(
-        title="🌩️ Live West/Central Texas Radar",
+        title=f"🌩️ Live Radar near {nearest_station}",
         description=f"Updated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
         color=discord.Color.blue()
     )
-    embed.set_image(url=f"{RADAR_URL}?{datetime.datetime.now().timestamp()}")  # Cache-busting URL
+    embed.set_image(url=f"{radar_url}?{datetime.datetime.now().timestamp()}")  # Cache-busting
 
     if radar_message is None:
         if RADAR_MESSAGE_ID is not None:

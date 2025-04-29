@@ -4,8 +4,8 @@ import datetime
 
 # --- CONFIGURATION ---
 from config import FORECAST_CHANNEL_ID, FORECAST_MESSAGE_ID
-LATITUDE = 31.4638  # San Angelo, TX latitude
-LONGITUDE = -100.4370  # San Angelo, TX longitude
+from location_manager import get_lat_lon, get_city_state
+
 FORECAST_DAYS = 7
 
 # --- Emoji icons based on weather codes ---
@@ -23,7 +23,6 @@ WEATHER_EMOJIS = {
 }
 
 def interpret_weather_code(code):
-    """Map Open-Meteo weather code to simple emojis/text."""
     if code in [0]:
         return "clear"
     elif code in [1]:
@@ -46,43 +45,38 @@ def interpret_weather_code(code):
         return "unknown"
 
 def c_to_f(celsius):
-    """Convert Celsius to Fahrenheit."""
     return round((celsius * 9 / 5) + 32)
 
 def ms_to_mph(ms):
-    """Convert meters/second to miles/hour."""
     return round(ms * 2.23694)
 
-async def fetch_forecast():
-    """Fetch 7-day forecast data from Open-Meteo API."""
+async def fetch_forecast(guild_id):
+    lat, lon = get_lat_lon(guild_id)
     url = (
         f"https://api.open-meteo.com/v1/forecast?"
-        f"latitude={LATITUDE}&longitude={LONGITUDE}&"
+        f"latitude={lat}&longitude={lon}&"
         f"daily=weathercode,temperature_2m_max,temperature_2m_min,"
         f"precipitation_probability_max,dewpoint_2m_min,windgusts_10m_max&"
         f"timezone=America/Chicago"
     )
-
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as resp:
             return await resp.json()
 
-async def fetch_current_conditions():
-    """Fetch current weather from Open-Meteo API."""
+async def fetch_current_conditions(guild_id):
+    lat, lon = get_lat_lon(guild_id)
     url = (
         f"https://api.open-meteo.com/v1/forecast?"
-        f"latitude={LATITUDE}&longitude={LONGITUDE}&"
+        f"latitude={lat}&longitude={lon}&"
         f"current_weather=true&timezone=America/Chicago"
     )
-
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as resp:
             return await resp.json()
 
-# --- Post or Update the Forecast Message ---
-async def post_forecast(bot):
-    forecast_data = await fetch_forecast()
-    current_data = await fetch_current_conditions()
+async def post_forecast(bot, guild_id):
+    forecast_data = await fetch_forecast(guild_id)
+    current_data = await fetch_current_conditions(guild_id)
 
     if "daily" not in forecast_data or "current_weather" not in current_data:
         print("⚠️ Failed to fetch forecast or current weather data")
@@ -103,12 +97,13 @@ async def post_forecast(bot):
     conditions_code = interpret_weather_code(current["weathercode"])
     conditions_emoji = WEATHER_EMOJIS.get(conditions_code, "❓")
 
-    # Build the forecast text
+    city, state = get_city_state(guild_id)
+
     lines = []
-    lines.append("**7-Day Forecast for San Angelo TX**\n")
+    lines.append(f"**7-Day Forecast for {city}, {state}**\n")
 
     # Current Conditions
-    lines.append(f"**Current Conditions at San Angelo, TX**")
+    lines.append(f"**Current Conditions at {city}, {state}**")
     lines.append(f"Current Forecast: {conditions_code.replace('_', ' ').title()} {conditions_emoji}")
     lines.append(f"Temperature: {temp_f}°F")
     lines.append(f"Wind Speed: {wind_dir}° at {wind_mph} mph")
@@ -133,7 +128,6 @@ async def post_forecast(bot):
 
     forecast_text = "\n".join(lines)
 
-    # Send or update the message
     channel = bot.get_channel(FORECAST_CHANNEL_ID)
     if not channel:
         print("⚠️ Forecast channel not found!")
@@ -148,4 +142,3 @@ async def post_forecast(bot):
         print("✅ Forecast message posted successfully (new message).")
     except Exception as e:
         print(f"❌ Failed to update forecast message: {e}")
-
