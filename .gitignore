@@ -25,3 +25,4 @@ venv/
 # Anything else you don't want to track
 *.bak
 *.tmp
+config.py

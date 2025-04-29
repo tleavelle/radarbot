@@ -8,7 +8,7 @@ from daily_spc_outlook import post_spc_outlook
 from radar_updater import radar_updater
 
 # ======== CONFIGURATION ========
-DISCORD_TOKEN = "MTM2NjU4NDQ5NDU5Mjc1Mzc1Nw.Gf6j94.kheiIzX9n13B7UmiDJldXYoNQMSRSXqA6vFfME"  # <-- Replace with your bot token
+from config import DISCORD_TOKEN
 # =================================
 
 intents = discord.Intents.default()
