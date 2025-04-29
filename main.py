@@ -23,7 +23,7 @@ intents.message_content = True  # Required to edit messages
 
 # --- CREATE BOT ---
 bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
-bot.tree = discord.app_commands.CommandTree(bot)
+#bot.tree = discord.app_commands.CommandTree(bot)
 scheduler = AsyncIOScheduler()
 
 # --- FUNCTIONS ---
