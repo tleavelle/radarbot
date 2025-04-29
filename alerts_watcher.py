@@ -26,7 +26,7 @@ ALERT_COLORS = {
 
 def get_alert_emoji(title):
     """Return an appropriate emoji based on alert type."""
-    title = title.lower()  # make case insensitive
+    title = title.lower()
     if "tornado" in title:
         return "🌪"
     elif "severe thunderstorm" in title:
@@ -40,6 +40,9 @@ def get_alert_emoji(title):
 posted_alerts = set()
 last_alert_time = datetime.datetime.utcnow()
 
+# Track the status message so we can update it
+alert_status_message_id = None  # Will store message ID after first post
+
 async def fetch_alerts():
     async with aiohttp.ClientSession() as session:
         async with session.get(NOAA_FEED_URL) as resp:
@@ -48,9 +51,9 @@ async def fetch_alerts():
             return feed.entries
 
 async def process_alerts(bot):
-    global last_alert_time
+    global last_alert_time, alert_status_message_id
 
-    new_alert_posted = False  # Track if we post anything
+    new_alert_posted = False
 
     entries = await fetch_alerts()
     for entry in entries:
@@ -81,10 +84,25 @@ async def process_alerts(bot):
                 await channel.send(final_message)
                 print(f"✅ Posted alert: {title}")
 
-            new_alert_posted = True  # Mark that we posted something
+            new_alert_posted = True
+
+    # Update or create the status message
+    channel = bot.get_channel(ALERTS_CHANNEL_ID)
+    now = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    status_text = f"📡 Last alert check: `{now} UTC`"
+
+    if channel:
+        try:
+            if alert_status_message_id:
+                msg = await channel.fetch_message(alert_status_message_id)
+                await msg.edit(content=status_text)
+            else:
+                status_msg = await channel.send(status_text)
+                alert_status_message_id = status_msg.id
+        except Exception as e:
+            print(f"⚠️ Could not edit or send status message: {e}")
 
     if not new_alert_posted:
-        now = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
         print(f"🕒 Checked alerts at {now} UTC, no new alerts found.")
 
 async def clear_status(bot):
@@ -105,11 +123,10 @@ async def clear_status(bot):
             )
             embed.set_footer(text="Radarbot - Enjoy the calm!")
             await channel.send(embed=embed)
-        last_alert_time = datetime.datetime.utcnow()  # Reset timer to avoid spam
+        last_alert_time = datetime.datetime.utcnow()
 
 def get_alert_color(title):
-    """Decide color based on alert type."""
     for key, color in ALERT_COLORS.items():
         if key in title:
             return color
-    return 0xFFFFFF  # Default to white if not matched
+    return 0xFFFFFF
