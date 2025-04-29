@@ -8,7 +8,7 @@ from daily_spc_outlook import post_spc_outlook
 from radar_updater import radar_updater
 
 # ======== CONFIGURATION ========
-from config import DISCORD_TOKEN
+from config import DISCORD_TOKEN #removed token from public view (and changed it)
 # =================================
 
 intents = discord.Intents.default()
