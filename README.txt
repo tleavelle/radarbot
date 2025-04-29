@@ -52,3 +52,21 @@ radarbot/
 ├── launch.sh             # Easy manual startup script
 ├── .gitignore            # Ignores config.py and __pycache__
 └── README.md             # This file!
+
+🛡 Security Notes
+config.py holds sensitive data (your Discord bot token) and is excluded from the repository using .gitignore.
+
+Make sure not to hardcode tokens directly in any .py files.
+
+📢 Planned Features
+🌩️ Add heartbeat logging (optional console messages)
+
+🌎 Expand to multi-region monitoring
+
+📈 Add live dashboard/metrics
+
+💬 Add optional user command interaction
+
+📄 License
+This project is licensed under the MIT License.
+Feel free to fork, modify, and build on it!
