@@ -31,6 +31,9 @@ async def send_heartbeat(bot):
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
 
+    await post_spc_outlook(bot)  # TEMP: run SPC outlook once on startup
+
+
     # Schedule the daily 7-day forecast at 7:00 AM
     scheduler.add_job(post_forecast, 'cron', hour=7, minute=0, args=[bot])
 
