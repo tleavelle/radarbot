@@ -3,6 +3,8 @@ from discord.ext import commands
 import asyncio
 import datetime
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from radar_updater import radar_updater, radar_task
+
 
 from alerts_watcher import process_alerts, clear_status
 from daily_forecast import post_forecast
@@ -69,6 +71,8 @@ async def on_ready():
 
     # Start the scheduler
     scheduler.start()
+
+    await radar_task(bot)
 
     print("🗓️ Scheduler and radar updater started.")
 
