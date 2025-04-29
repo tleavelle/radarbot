@@ -1,0 +1,27 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Caches
+.cache/
+*.log
+
+# VSCode settings
+.vscode/
+
+# Mac system files
+.DS_Store
+
+# Python virtual environments
+venv/
+
+# Systemd service files (optional if you copy them here)
+*.service
+
+# IDE folders
+.idea/
+
+# Anything else you don't want to track
+*.bak
+*.tmp
