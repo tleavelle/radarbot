@@ -100,7 +100,11 @@ async def process_alerts(bot):
 
         for title, summary in new_alerts:
             emoji = get_alert_emoji(title)
-            condensed = summary.split("\n")[0].strip()
+
+            # 🧠 Smart line extraction for better location context
+            lines = summary.splitlines()
+            key_lines = [line for line in lines if line.strip().startswith(("At", "WHAT", "...", "THE NATIONAL WEATHER SERVICE"))]
+            condensed = key_lines[0].strip() if key_lines else lines[0].strip()
             if len(condensed) > 350:
                 condensed = condensed[:347] + "..."
 
