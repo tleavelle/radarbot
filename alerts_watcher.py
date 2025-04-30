@@ -99,8 +99,8 @@ async def process_alerts(bot):
 
             # Condense to first paragraph and limit length
             condensed = summary.split("\n")[0].strip()
-            if len(condensed) > 300:
-                condensed = condensed[:297] + "..."
+            if len(condensed) > 350:
+                condensed = condensed[:347] + "..."
 
             embed.add_field(name=f"{emoji} {title}", value=condensed, inline=False)
 
