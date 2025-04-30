@@ -52,6 +52,9 @@ async def process_alerts(bot):
         print(f"❌ Failed to fetch status or timestamp messages: {e}")
         return
 
+    # Always clear embed just in case
+    await status_msg.edit(content="🔄 Checking for new alerts...", embed=None)
+
     # Delete previously posted alert messages
     for msg_id in alert_message_ids:
         try:
@@ -77,8 +80,8 @@ async def process_alerts(bot):
     now_str = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
     if new_alerts:
-        pointer_text = f"🔴 **{len(new_alerts)} Active Severe Weather Alert(s)**\n⚠️ See details below ⬇️"
-        await status_msg.edit(content=pointer_text)
+        pointer_text = f"🔴 **{len(new_alerts)} Active Severe Weather Alert(s)**\n⚠️ See messages below ⬇️"
+        await status_msg.edit(content=pointer_text, embed=None)
 
         chunks = []
         current = ""
@@ -101,10 +104,8 @@ async def process_alerts(bot):
 
         print(f"✅ Posted {len(new_alerts)} alerts across {len(chunks)} messages.")
     else:
-        # Still update last_alert_time so clear_status doesn't falsely trigger
         last_alert_time = datetime.datetime.utcnow()
-
-        await status_msg.edit(content="✅ **No Active Warnings**\nRadarbot - Enjoy the calm!")
+        await status_msg.edit(content="✅ **No Active Warnings**\nRadarbot - Enjoy the calm!", embed=None)
         print("🟢 No alerts found — status message cleared.")
 
     try:
@@ -139,7 +140,7 @@ async def clear_status(bot):
                 pass
         alert_message_ids.clear()
 
-        await status_msg.edit(content="✅ **No Active Warnings**\nRadarbot - Enjoy the calm!")
+        await status_msg.edit(content="✅ **No Active Warnings**\nRadarbot - Enjoy the calm!", embed=None)
         print("🟢 Cleared alert messages and updated status.")
         last_alert_time = datetime.datetime.utcnow()
     else:
