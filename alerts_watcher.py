@@ -14,7 +14,6 @@ WATCHED_COUNTIES = [
 ]
 NOAA_FEED_URL = "https://api.weather.gov/alerts/active.atom?area=TX"
 
-# Alert color mapping
 ALERT_COLORS = {
     "Tornado Warning": 0xFF0000,
     "Severe Thunderstorm Warning": 0xFFFF00,
@@ -79,7 +78,7 @@ async def process_alerts(bot):
         if link in posted_alerts:
             continue
 
-        # Check against title, summary, and cap:areaDesc
+        # Match county names in areaDesc, summary, or title
         combined_text = f"{title} {summary} {area}"
         if any(county.lower() in combined_text.lower() for county in WATCHED_COUNTIES):
             posted_alerts.add(link)
@@ -97,14 +96,20 @@ async def process_alerts(bot):
         )
         for title, summary in new_alerts[:5]:
             emoji = get_alert_emoji(title)
-            embed.add_field(name=f"{emoji} {title}", value=summary[:1024], inline=False)
+
+            # Condense to first paragraph and limit length
+            condensed = summary.split("\n")[0].strip()
+            if len(condensed) > 300:
+                condensed = condensed[:297] + "..."
+
+            embed.add_field(name=f"{emoji} {title}", value=condensed, inline=False)
 
         embed.set_footer(text="Radarbot - Stay safe!")
         await status_msg.edit(content=None, embed=embed)
         print(f"✅ Updated status message with {len(new_alerts)} new alert(s).")
     else:
         print(f"🕒 Checked alerts at {now}, no new alerts found.")
-        last_alert_time = datetime.datetime.utcnow()  # Keep aging
+        last_alert_time = datetime.datetime.utcnow()
 
     try:
         await timestamp_msg.edit(content=f"📡 Last alert check: `{now} UTC`")
@@ -139,7 +144,7 @@ async def clear_status(bot):
         embed.set_footer(text="Radarbot - Enjoy the calm!")
         await status_msg.edit(content=None, embed=embed)
         print("🟢 Cleared alert status message to 'No Active Warnings'.")
-        last_alert_time = datetime.datetime.utcnow()  # Reset after clearing
+        last_alert_time = datetime.datetime.utcnow()
     else:
         print("🕒 No need to clear status yet (recent alert).")
 
