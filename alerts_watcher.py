@@ -14,15 +14,6 @@ WATCHED_COUNTIES = [
 ]
 NOAA_FEED_URL = "https://api.weather.gov/alerts/active.atom?area=TX"
 
-ALERT_COLORS = {
-    "Tornado Warning": 0xFF0000,
-    "Severe Thunderstorm Warning": 0xFFFF00,
-    "Flash Flood Warning": 0x00CED1,
-    "Tornado Watch": 0xFFA500,
-    "Severe Thunderstorm Watch": 0xFFA500,
-    "Flood Warning": 0x00CED1,
-}
-
 def get_alert_emoji(title):
     title = title.lower()
     if "tornado" in title:
@@ -33,12 +24,6 @@ def get_alert_emoji(title):
         return "🌊"
     else:
         return "⚠️"
-
-def get_alert_color(title):
-    for key, color in ALERT_COLORS.items():
-        if key in title:
-            return color
-    return 0xFFFFFF
 
 # Track posted alerts
 posted_alerts = set()
@@ -81,32 +66,26 @@ async def process_alerts(bot):
         combined_text = f"{title} {summary} {area}"
         if any(county.lower() in combined_text.lower() for county in WATCHED_COUNTIES):
             posted_alerts.add(link)
-            new_alerts.append((title, summary))
+            new_alerts.append((title, summary, link))
             last_alert_time = datetime.datetime.utcnow()
 
     now = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
     if new_alerts:
-        lines = []
-        for title, summary in new_alerts:
+        lines = [f"🔴 **Active Severe Weather Alerts** ({len(new_alerts)} active)\n"]
+
+        for title, summary, link in new_alerts:
             emoji = get_alert_emoji(title)
-            lines.append(f"**{emoji} {title}**")
-            lines.append(summary.strip())
-            lines.append("")  # blank line
+            title_line = f"**{emoji} [{title}]({link})**"
+            lines.append(title_line)
+            lines.append(f"*{summary.strip()}*")
+            lines.append("")
 
-        full_text = "\n".join(lines)
+        message_text = "\n".join(lines)
+        if len(message_text) > 2000:
+            message_text = message_text[:1997] + "..."
 
-        if len(full_text) > 2000:
-            full_text = full_text[:1997] + "..."
-
-        embed = discord.Embed(
-            title="🔴 Active Severe Weather Alerts",
-            description=full_text,
-            timestamp=datetime.datetime.utcnow(),
-            color=0xFF0000
-        )
-        embed.set_footer(text="Radarbot – Stay safe!")
-        await status_msg.edit(content=None, embed=embed)
+        await status_msg.edit(content=message_text)
         print(f"✅ Posted {len(new_alerts)} full alerts.")
     else:
         print(f"🕒 Checked alerts at {now}, no new alerts found.")
@@ -136,14 +115,12 @@ async def clear_status(bot):
     difference = (now - last_alert_time).total_seconds()
 
     if difference > 3600:
-        embed = discord.Embed(
-            title="✅ No Active Warnings",
-            description="There are currently no watches or warnings in effect.",
-            timestamp=datetime.datetime.utcnow(),
-            color=0x00FF00
+        message_text = (
+            "✅ **No Active Warnings**\n"
+            "There are currently no watches or warnings in effect.\n"
+            "Radarbot - Enjoy the calm!"
         )
-        embed.set_footer(text="Radarbot - Enjoy the calm!")
-        await status_msg.edit(content=None, embed=embed)
+        await status_msg.edit(content=message_text)
         print("🟢 Cleared alert status message to 'No Active Warnings'.")
         last_alert_time = datetime.datetime.utcnow()
     else:
