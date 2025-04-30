@@ -74,11 +74,14 @@ async def process_alerts(bot):
         title = entry.title
         summary = entry.summary
         link = entry.link
+        area = entry.get("cap_areadesc", "")
 
         if link in posted_alerts:
             continue
 
-        if any(county.lower() in title.lower() for county in WATCHED_COUNTIES):
+        # Check against title, summary, and cap:areaDesc
+        combined_text = f"{title} {summary} {area}"
+        if any(county.lower() in combined_text.lower() for county in WATCHED_COUNTIES):
             posted_alerts.add(link)
             new_alerts.append((title, summary))
             last_alert_time = datetime.datetime.utcnow()
@@ -101,10 +104,8 @@ async def process_alerts(bot):
         print(f"✅ Updated status message with {len(new_alerts)} new alert(s).")
     else:
         print(f"🕒 Checked alerts at {now}, no new alerts found.")
-        # 🛠️ Fix: Update last_alert_time even when no alerts found
-        last_alert_time = datetime.datetime.utcnow()
+        last_alert_time = datetime.datetime.utcnow()  # Keep aging
 
-    # Always update the timestamp message
     try:
         await timestamp_msg.edit(content=f"📡 Last alert check: `{now} UTC`")
     except Exception as e:
@@ -138,12 +139,10 @@ async def clear_status(bot):
         embed.set_footer(text="Radarbot - Enjoy the calm!")
         await status_msg.edit(content=None, embed=embed)
         print("🟢 Cleared alert status message to 'No Active Warnings'.")
-        # 🛠️ Fix: Reset timer to avoid re-clearing
-        last_alert_time = datetime.datetime.utcnow()
+        last_alert_time = datetime.datetime.utcnow()  # Reset after clearing
     else:
         print("🕒 No need to clear status yet (recent alert).")
 
-    # Always update timestamp regardless
     try:
         await timestamp_msg.edit(content=f"📡 Last alert check: `{now_str} UTC`")
     except Exception as e:
