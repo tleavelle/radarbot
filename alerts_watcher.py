@@ -78,7 +78,6 @@ async def process_alerts(bot):
         if link in posted_alerts:
             continue
 
-        # Match county names in areaDesc, summary, or title
         combined_text = f"{title} {summary} {area}"
         if any(county.lower() in combined_text.lower() for county in WATCHED_COUNTIES):
             posted_alerts.add(link)
@@ -94,19 +93,35 @@ async def process_alerts(bot):
             timestamp=datetime.datetime.utcnow(),
             color=0xFF0000
         )
-        for title, summary in new_alerts[:5]:
-            emoji = get_alert_emoji(title)
 
-            # Condense to first paragraph and limit length
+        total_length = len(embed.title) + len(embed.description)
+        max_embed_length = 6000
+        cutoff_triggered = False
+
+        for title, summary in new_alerts:
+            emoji = get_alert_emoji(title)
             condensed = summary.split("\n")[0].strip()
             if len(condensed) > 350:
                 condensed = condensed[:347] + "..."
 
-            embed.add_field(name=f"{emoji} {title}", value=condensed, inline=False)
+            field_name = f"{emoji} {title}"
+            field_value = condensed
+            field_len = len(field_name) + len(field_value)
 
-        embed.set_footer(text="Radarbot - Stay safe!")
+            if total_length + field_len >= max_embed_length:
+                cutoff_triggered = True
+                break
+
+            embed.add_field(name=field_name, value=field_value, inline=False)
+            total_length += field_len
+
+        if cutoff_triggered:
+            embed.set_footer(text=f"⚠️ Showing first alerts only (Discord limit hit) • Radarbot")
+        else:
+            embed.set_footer(text="Radarbot – Stay safe!")
+
         await status_msg.edit(content=None, embed=embed)
-        print(f"✅ Updated status message with {len(new_alerts)} new alert(s).")
+        print(f"✅ Posted {len(embed.fields)} alert(s) to embed.")
     else:
         print(f"🕒 Checked alerts at {now}, no new alerts found.")
         last_alert_time = datetime.datetime.utcnow()
