@@ -5,7 +5,7 @@ import feedparser
 import datetime
 
 # --- CONFIGURATION ---
-from config import ALERTS_CHANNEL_ID, SEVERE_ROLE_ID, ALERT_STATUS_MESSAGE_ID, ALERT_TIMESTAMP_MESSAGE_ID
+from config import ALERTS_CHANNEL_ID, ALERT_STATUS_MESSAGE_ID, ALERT_TIMESTAMP_MESSAGE_ID
 
 WATCHED_COUNTIES = [
     "Haskell", "Throckmorton", "Fisher", "Jones", "Shackleford", "Nolan", "Taylor", "Callahan",
@@ -28,6 +28,7 @@ def get_alert_emoji(title):
 # Track posted alerts
 posted_alerts = set()
 last_alert_time = datetime.datetime.utcnow()
+alert_message_ids = []  # Messages created for alerts (to be deleted later)
 
 async def fetch_alerts():
     async with aiohttp.ClientSession() as session:
@@ -37,7 +38,7 @@ async def fetch_alerts():
             return feed.entries
 
 async def process_alerts(bot):
-    global last_alert_time
+    global last_alert_time, alert_message_ids
 
     channel = bot.get_channel(ALERTS_CHANNEL_ID)
     if not channel:
@@ -50,6 +51,15 @@ async def process_alerts(bot):
     except Exception as e:
         print(f"❌ Failed to fetch status or timestamp messages: {e}")
         return
+
+    # Delete previously posted alert messages
+    for msg_id in alert_message_ids:
+        try:
+            msg = await channel.fetch_message(msg_id)
+            await msg.delete()
+        except Exception:
+            pass
+    alert_message_ids.clear()
 
     entries = await fetch_alerts()
     new_alerts = []
@@ -69,35 +79,46 @@ async def process_alerts(bot):
             new_alerts.append((title, summary, link))
             last_alert_time = datetime.datetime.utcnow()
 
-    now = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    now_str = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
     if new_alerts:
-        lines = [f"🔴 **Active Severe Weather Alerts** ({len(new_alerts)} active)\n"]
+        # Update pointer message
+        pointer_text = f"🔴 **{len(new_alerts)} Active Severe Weather Alert(s)**\n⚠️ See details below ⬇️"
+        await status_msg.edit(content=pointer_text)
+
+        # Compose alert messages
+        chunks = []
+        current = ""
 
         for title, summary, link in new_alerts:
             emoji = get_alert_emoji(title)
-            title_line = f"**{emoji} [{title}]({link})**"
-            lines.append(title_line)
-            lines.append(f"*{summary.strip()}*")
-            lines.append("")
+            alert_text = f"**{emoji} [{title}]({link})**\n*{summary.strip()}*\n\n"
+            if len(current) + len(alert_text) > 2000:
+                chunks.append(current)
+                current = alert_text
+            else:
+                current += alert_text
 
-        message_text = "\n".join(lines)
-        if len(message_text) > 2000:
-            message_text = message_text[:1997] + "..."
+        if current:
+            chunks.append(current)
 
-        await status_msg.edit(content=message_text)
-        print(f"✅ Posted {len(new_alerts)} full alerts.")
+        for chunk in chunks:
+            msg = await channel.send(chunk)
+            alert_message_ids.append(msg.id)
+
+        print(f"✅ Posted {len(new_alerts)} alerts across {len(chunks)} messages.")
     else:
-        print(f"🕒 Checked alerts at {now}, no new alerts found.")
+        await status_msg.edit(content="✅ **No Active Warnings**\nRadarbot - Enjoy the calm!")
+        print("🟢 No alerts found — status message cleared.")
         last_alert_time = datetime.datetime.utcnow()
 
     try:
-        await timestamp_msg.edit(content=f"📡 Last alert check: `{now} UTC`")
+        await timestamp_msg.edit(content=f"📡 Last alert check: `{now_str} UTC`")
     except Exception as e:
         print(f"⚠️ Failed to update timestamp message: {e}")
 
 async def clear_status(bot):
-    global last_alert_time
+    global last_alert_time, alert_message_ids
 
     channel = bot.get_channel(ALERTS_CHANNEL_ID)
     if not channel:
@@ -115,13 +136,18 @@ async def clear_status(bot):
     difference = (now - last_alert_time).total_seconds()
 
     if difference > 3600:
-        message_text = (
-            "✅ **No Active Warnings**\n"
-            "There are currently no watches or warnings in effect.\n"
-            "Radarbot - Enjoy the calm!"
-        )
-        await status_msg.edit(content=message_text)
-        print("🟢 Cleared alert status message to 'No Active Warnings'.")
+        # Clear old alert messages
+        for msg_id in alert_message_ids:
+            try:
+                msg = await channel.fetch_message(msg_id)
+                await msg.delete()
+            except Exception:
+                pass
+        alert_message_ids.clear()
+
+        await status_msg.edit(content="✅ **No Active Warnings**\nRadarbot - Enjoy the calm!")
+        print("🟢 Cleared alert messages and updated status.")
+
         last_alert_time = datetime.datetime.utcnow()
     else:
         print("🕒 No need to clear status yet (recent alert).")
