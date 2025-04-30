@@ -70,23 +70,16 @@ async def process_alerts(bot):
         link = entry.link
         area = entry.get("cap_areadesc", "")
 
-        if link in posted_alerts:
-            continue
-
-        combined_text = f"{title} {summary} {area}"
-        if any(county.lower() in combined_text.lower() for county in WATCHED_COUNTIES):
-            posted_alerts.add(link)
+        if any(county.lower() in f"{title} {summary} {area}".lower() for county in WATCHED_COUNTIES):
             new_alerts.append((title, summary, link))
             last_alert_time = datetime.datetime.utcnow()
 
     now_str = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
     if new_alerts:
-        # Update pointer message
         pointer_text = f"🔴 **{len(new_alerts)} Active Severe Weather Alert(s)**\n⚠️ See details below ⬇️"
         await status_msg.edit(content=pointer_text)
 
-        # Compose alert messages
         chunks = []
         current = ""
 
@@ -108,9 +101,11 @@ async def process_alerts(bot):
 
         print(f"✅ Posted {len(new_alerts)} alerts across {len(chunks)} messages.")
     else:
+        # Still update last_alert_time so clear_status doesn't falsely trigger
+        last_alert_time = datetime.datetime.utcnow()
+
         await status_msg.edit(content="✅ **No Active Warnings**\nRadarbot - Enjoy the calm!")
         print("🟢 No alerts found — status message cleared.")
-        last_alert_time = datetime.datetime.utcnow()
 
     try:
         await timestamp_msg.edit(content=f"📡 Last alert check: `{now_str} UTC`")
@@ -136,7 +131,6 @@ async def clear_status(bot):
     difference = (now - last_alert_time).total_seconds()
 
     if difference > 3600:
-        # Clear old alert messages
         for msg_id in alert_message_ids:
             try:
                 msg = await channel.fetch_message(msg_id)
@@ -147,7 +141,6 @@ async def clear_status(bot):
 
         await status_msg.edit(content="✅ **No Active Warnings**\nRadarbot - Enjoy the calm!")
         print("🟢 Cleared alert messages and updated status.")
-
         last_alert_time = datetime.datetime.utcnow()
     else:
         print("🕒 No need to clear status yet (recent alert).")
