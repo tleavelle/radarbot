@@ -73,7 +73,14 @@ async def process_alerts(bot):
         link = entry.link
         area = entry.get("cap_areadesc", "")
 
-        if any(county.lower() in f"{title} {summary} {area}".lower() for county in WATCHED_COUNTIES):
+        # Split cap_areadesc into counties
+        alert_counties = [c.strip().lower() for c in area.split(";")] if area else []
+        fallback_text = f"{title} {summary}".lower()
+
+        # Use accurate county matching with fallback
+        if any(wc.lower() in alert_counties for wc in WATCHED_COUNTIES) or (
+            not alert_counties and any(wc.lower() in fallback_text for wc in WATCHED_COUNTIES)
+        ):
             new_alerts.append((title, summary, link))
             last_alert_time = datetime.datetime.utcnow()
 
@@ -112,6 +119,7 @@ async def process_alerts(bot):
         await timestamp_msg.edit(content=f"📡 Last alert check: `{now_str} UTC`")
     except Exception as e:
         print(f"⚠️ Failed to update timestamp message: {e}")
+
 
 async def clear_status(bot):
     global last_alert_time, alert_message_ids
